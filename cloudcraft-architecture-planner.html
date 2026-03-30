@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CLOUDCRAFT — Cloud Architecture Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Fira+Code:wght@300;400;500&family=Bricolage+Grotesque:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg:#0a0e1a;--s1:#0f1524;--s2:#151c30;--s3:#1b2440;--s4:#243050;
+--az:#0078d4;--az2:#50b5ff;--aws:#ff9900;--gcp:#4285f4;
+--green:#10b981;--red:#ef4444;--yellow:#f59e0b;--purple:#8b5cf6;--teal:#06b6d4;--pink:#ec4899;
+--t1:#e1e7ef;--t2:#8b98b0;--t3:#4a5568;--bdr:rgba(0,120,212,0.15);
+--fd:'Bricolage Grotesque',sans-serif;--fb:'Manrope',sans-serif;--fm:'Fira Code',monospace;
+}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--t1);font-family:var(--fb);font-size:13px}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--az);border-radius:3px}
+button{cursor:pointer;font-family:var(--fb)}
+input,select,textarea{font-family:var(--fm);background:var(--s1);border:1px solid var(--bdr);color:var(--t1);padding:0.4rem 0.55rem;font-size:0.72rem;border-radius:4px;outline:none;transition:border-color 0.2s}
+input:focus,select:focus,textarea:focus{border-color:var(--az)}
+
+.app{display:grid;grid-template-rows:46px 1fr 32px;grid-template-columns:250px 1fr 280px;height:100vh}
+.top{grid-column:1/-1;background:var(--s1);border-bottom:1px solid var(--bdr);display:flex;align-items:center;padding:0 0.85rem;gap:0.7rem}
+.bot{grid-column:1/-1;background:var(--s1);border-top:1px solid var(--bdr);display:flex;align-items:center;padding:0 0.85rem;gap:1rem;font-size:0.6rem;font-family:var(--fm);color:var(--t3)}
+.bot-item{display:flex;align-items:center;gap:0.3rem}
+
+.logo{font-family:var(--fd);font-weight:800;font-size:0.95rem;display:flex;align-items:center;gap:0.4rem}
+.logo em{font-style:normal;color:var(--az)}
+.logo span{color:var(--t3);font-weight:400;font-family:var(--fb);font-size:0.65rem}
+.sep{width:1px;height:20px;background:var(--bdr)}
+.tb{padding:0.28rem 0.65rem;font-size:0.62rem;font-weight:600;letter-spacing:0.03em;border:1px solid var(--bdr);border-radius:4px;background:transparent;color:var(--t2);transition:all 0.15s}
+.tb:hover{border-color:var(--az);color:var(--az);background:rgba(0,120,212,0.06)}
+.tb.pri{background:var(--az);color:#fff;border-color:var(--az)}.tb.pri:hover{background:#1a8ae6}
+.tb.red{border-color:rgba(239,68,68,0.25);color:var(--red)}.tb.red:hover{background:rgba(239,68,68,0.08)}
+.tbg{display:flex;gap:0.25rem}
+.tb-right{margin-left:auto;display:flex;gap:0.6rem;align-items:center;font-family:var(--fm);font-size:0.6rem;color:var(--t3)}
+
+/* SIDEBAR */
+.side{background:var(--s1);border-right:1px solid var(--bdr);overflow-y:auto}
+.ss{padding:0.6rem;border-bottom:1px solid rgba(0,120,212,0.08)}
+.ss-t{font-family:var(--fd);font-size:0.55rem;font-weight:700;letter-spacing:0.14em;color:var(--t3);text-transform:uppercase;margin-bottom:0.45rem}
+.res-list{display:flex;flex-direction:column;gap:0.2rem}
+.res-item{display:flex;align-items:center;gap:0.45rem;padding:0.35rem 0.45rem;background:var(--s2);border:1px solid rgba(0,120,212,0.06);border-radius:4px;cursor:grab;transition:all 0.15s;user-select:none}
+.res-item:hover{border-color:var(--az);background:var(--s3);transform:translateX(2px)}
+.ri-icon{width:24px;height:24px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:0.75rem;flex-shrink:0;background:rgba(0,120,212,0.1);border:1px solid rgba(0,120,212,0.15)}
+.ri-name{font-size:0.68rem;font-weight:600}.ri-cost{font-size:0.5rem;color:var(--t3);font-family:var(--fm)}
+
+/* Cost summary */
+.cost-box{background:var(--s2);border:1px solid var(--bdr);border-radius:5px;padding:0.6rem;text-align:center}
+.cost-total{font-family:var(--fd);font-size:1.6rem;font-weight:800;color:var(--green)}
+.cost-label{font-size:0.5rem;color:var(--t3);letter-spacing:0.1em;text-transform:uppercase;margin-top:0.1rem}
+.cost-breakdown{margin-top:0.5rem;font-size:0.6rem;text-align:left}
+.cb-row{display:flex;justify-content:space-between;padding:0.15rem 0;border-bottom:1px solid rgba(0,120,212,0.05)}
+.cb-name{color:var(--t2)}.cb-val{color:var(--az2);font-family:var(--fm)}
+
+/* CANVAS */
+.canvas-area{position:relative;overflow:hidden;background:var(--bg);cursor:grab}
+.canvas-area.grabbing{cursor:grabbing}
+#cloudCanvas{position:absolute;top:0;left:0}
+#resContainer{position:absolute;top:0;left:0;width:100%;height:100%}
+.cloud-res{position:absolute;min-width:140px;background:var(--s2);border:2px solid var(--s4);border-radius:8px;cursor:move;user-select:none;transition:box-shadow 0.2s,border-color 0.2s;z-index:10}
+.cloud-res:hover{z-index:20}
+.cloud-res.selected{border-color:var(--az);box-shadow:0 0 0 2px rgba(0,120,212,0.2)}
+.cr-head{padding:0.4rem 0.55rem;display:flex;align-items:center;gap:0.4rem;border-bottom:1px solid rgba(255,255,255,0.04)}
+.cr-icon{width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:0.7rem;background:rgba(0,120,212,0.12);border:1px solid rgba(0,120,212,0.2);flex-shrink:0}
+.cr-name{font-size:0.65rem;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cr-del{background:none;border:none;color:var(--t3);font-size:0.6rem;padding:0.1rem 0.25rem;border-radius:3px;transition:all 0.15s}
+.cr-del:hover{color:var(--red);background:rgba(239,68,68,0.1)}
+.cr-body{padding:0.35rem 0.55rem;font-family:var(--fm);font-size:0.5rem;color:var(--t3);line-height:1.5}
+.cr-cost{font-size:0.5rem;color:var(--green);font-family:var(--fm);padding:0.2rem 0.55rem 0.35rem;border-top:1px solid rgba(255,255,255,0.03)}
+.cr-port{position:absolute;width:8px;height:8px;border-radius:50%;background:var(--s3);border:1.5px solid var(--t3);cursor:crosshair;z-index:15;transition:all 0.15s}
+.cr-port:hover{transform:scale(1.5);background:var(--az);border-color:var(--az)}
+.cr-port.p-t{top:-4px;left:50%;margin-left:-4px}
+.cr-port.p-b{bottom:-4px;left:50%;margin-left:-4px}
+.cr-port.p-l{left:-4px;top:50%;margin-top:-4px}
+.cr-port.p-r{right:-4px;top:50%;margin-top:-4px}
+
+/* PROPS */
+.props{background:var(--s1);border-left:1px solid var(--bdr);overflow-y:auto}
+.ps{padding:0.6rem;border-bottom:1px solid rgba(0,120,212,0.08)}
+.ps-t{font-family:var(--fd);font-size:0.55rem;font-weight:700;letter-spacing:0.14em;color:var(--t3);text-transform:uppercase;margin-bottom:0.45rem}
+.pf{margin-bottom:0.45rem}
+.pf label{display:block;font-size:0.58rem;font-weight:500;color:var(--t3);margin-bottom:0.15rem}
+.pf input,.pf select,.pf textarea{width:100%}
+.p-empty{text-align:center;padding:2rem 0.75rem;color:var(--t3);font-size:0.7rem}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.3rem}
+.stat-c{background:var(--s2);border-radius:4px;padding:0.4rem;text-align:center}
+.stat-v{font-family:var(--fd);font-size:0.95rem;font-weight:700}.stat-l{font-size:0.45rem;color:var(--t3);letter-spacing:0.1em;text-transform:uppercase}
+
+/* Zoom */
+.zoom-c{position:absolute;bottom:0.75rem;right:0.75rem;display:flex;gap:0.2rem;z-index:50}
+.zb{width:28px;height:28px;border-radius:5px;background:var(--s1);border:1px solid var(--bdr);color:var(--t2);font-size:0.8rem;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.15s}
+.zb:hover{border-color:var(--az);color:var(--az)}
+.zl{font-family:var(--fm);font-size:0.55rem;color:var(--t3);display:flex;align-items:center;padding:0 0.35rem}
+
+/* Region groups */
+.region-box{position:absolute;border:1.5px dashed rgba(0,120,212,0.15);border-radius:10px;pointer-events:none;z-index:1}
+.region-label{position:absolute;top:-10px;left:12px;font-family:var(--fm);font-size:0.5rem;color:rgba(0,120,212,0.3);letter-spacing:0.08em;background:var(--bg);padding:0 0.4rem}
+
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;display:none;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
+.modal-bg.open{display:flex}
+.modal{background:var(--s1);border:1px solid var(--bdr);border-radius:8px;width:90vw;max-width:720px;max-height:80vh;overflow:hidden}
+.modal-h{padding:0.6rem 0.85rem;border-bottom:1px solid var(--bdr);display:flex;justify-content:space-between;align-items:center}
+.modal-h h3{font-family:var(--fd);font-size:0.7rem;letter-spacing:0.08em;color:var(--az)}
+.modal-x{background:none;border:1px solid var(--bdr);width:26px;height:26px;border-radius:4px;color:var(--t3);font-size:0.75rem;display:flex;align-items:center;justify-content:center;transition:all 0.15s}
+.modal-x:hover{color:var(--red);border-color:var(--red)}
+.modal-b{padding:0.85rem;overflow-y:auto;max-height:calc(80vh - 44px)}
+.modal-b pre{background:var(--bg);border:1px solid var(--bdr);border-radius:5px;padding:0.75rem;font-family:var(--fm);font-size:0.6rem;line-height:1.6;color:var(--t2);overflow-x:auto;white-space:pre-wrap}
+.ex-tabs{display:flex;gap:0.2rem;margin-bottom:0.5rem}
+.ex-tab{padding:0.25rem 0.6rem;font-size:0.6rem;font-weight:600;border:1px solid var(--bdr);border-radius:4px;background:transparent;color:var(--t3);transition:all 0.15s}
+.ex-tab.on{background:var(--az);color:#fff;border-color:var(--az)}
+
+@media(max-width:900px){.app{grid-template-columns:1fr}.side,.props{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <div class="logo"><em>CLOUD</em>CRAFT<span>&nbsp;Architecture Planner</span></div>
+    <div class="sep"></div>
+    <div class="tbg">
+      <button class="tb" onclick="autoLayout()">Auto Layout</button>
+      <button class="tb pri" onclick="openExport()">Export</button>
+    </div>
+    <div class="sep"></div>
+    <div class="tbg">
+      <button class="tb" onclick="saveArch()">Save</button>
+      <button class="tb" onclick="loadArch()">Load</button>
+      <button class="tb" onclick="loadDemo()">Demo</button>
+      <button class="tb red" onclick="clearAll()">Clear</button>
+    </div>
+    <div class="tb-right">
+      <span id="resCount">Resources: 0</span>
+      <span id="connCount">Connections: 0</span>
+      <span>Est: <span id="costDisplay" style="color:var(--green)">$0/mo</span></span>
+    </div>
+  </div>
+
+  <div class="side">
+    <div class="ss">
+      <div class="ss-t">Compute</div>
+      <div class="res-list">
+        <div class="res-item" draggable="true" data-type="vm"><div class="ri-icon">🖥️</div><div><div class="ri-name">Virtual Machine</div><div class="ri-cost">from $13/mo</div></div></div>
+        <div class="res-item" draggable="true" data-type="appservice"><div class="ri-icon">🌐</div><div><div class="ri-name">App Service</div><div class="ri-cost">from $13/mo</div></div></div>
+        <div class="res-item" draggable="true" data-type="function"><div class="ri-icon">⚡</div><div><div class="ri-name">Functions</div><div class="ri-cost">pay-per-exec</div></div></div>
+        <div class="res-item" draggable="true" data-type="container"><div class="ri-icon">🐳</div><div><div class="ri-name">Container Instance</div><div class="ri-cost">from $30/mo</div></div></div>
+        <div class="res-item" draggable="true" data-type="aks"><div class="ri-icon">☸️</div><div><div class="ri-name">Kubernetes (AKS)</div><div class="ri-cost">from $73/mo</div></div></div>
+      </div>
+    </div>
+    <div class="ss">
+      <div class="ss-t">Networking</div>
+      <div class="res-list">
+        <div class="res-item" draggable="true" data-type="vnet"><div class="ri-icon">🔲</div><div><div class="ri-name">Virtual Network</div><div class="ri-cost">free*</div></div></div>
+        <div class="res-item" draggable="true" data-type="lb"><div class="ri-icon">⚖️</div><div><div class="ri-name">Load Balancer</div><div class="ri-cost">from $18/mo</div></div></div>
+        <div class="res-item" draggable="true" data-type="appgw"><div class="ri-icon">🛡️</div><div><div class="ri-name">App Gateway / WAF</div><div class="ri-cost">from $175/mo</div></div></div>
+        <div class="res-item" draggable="true" data-type="dns"><div class="ri-icon">🌍</div><div><div class="ri-name">DNS Zone</div><div class="ri-cost">$0.50/mo</div></div></div>
+        <div class="res-item" draggable="true" data-type="vpngw"><div class="ri-icon">🔒</div><div><div class="ri-name">VPN Gateway</div><div class="ri-cost">from $27/mo</div></div></div>
+        <div class="res-item" draggable="true" data-type="nsg"><div class="ri-icon">🚧</div><div><div class="ri-name">Network Security Group</div><div class="ri-cost">free</div></div></div>
+      </div>
+    </div>
+    <div class="ss">
+      <div class="ss-t">Storage & Database</div>
+      <div class="res-list">
+        <div class="res-item" draggable="true" data-type="storage"><div class="ri-icon">💾</div><div><div class="ri-name">Storage Account</div><div class="ri-cost">from $1/mo</div></div></div>
+        <div class="res-item" draggable="true" data-type="sqldb"><div class="ri-icon">🗄️</div><div><div class="ri-name">Azure SQL</div><div class="ri-cost">from $5/mo</div></div></div>
+        <div class="res-item" draggable="true" data-type="cosmos"><div class="ri-icon">🌌</div><div><div class="ri-name">Cosmos DB</div><div class="ri-cost">from $24/mo</div></div></div>
+        <div class="res-item" draggable="true" data-type="redis"><div class="ri-icon">🔴</div><div><div class="ri-name">Redis Cache</div><div class="ri-cost">from $16/mo</div></div></div>
+      </div>
+    </div>
+    <div class="ss">
+      <div class="ss-t">Identity & Security</div>
+      <div class="res-list">
+        <div class="res-item" draggable="true" data-type="entraid"><div class="ri-icon">🔑</div><div><div class="ri-name">Entra ID</div><div class="ri-cost">free / P1 $6/u</div></div></div>
+        <div class="res-item" draggable="true" data-type="keyvault"><div class="ri-icon">🔐</div><div><div class="ri-name">Key Vault</div><div class="ri-cost">from $0.03/op</div></div></div>
+        <div class="res-item" draggable="true" data-type="sentinel"><div class="ri-icon">👁️</div><div><div class="ri-name">Sentinel (SIEM)</div><div class="ri-cost">from $2.46/GB</div></div></div>
+      </div>
+    </div>
+    <div class="ss">
+      <div class="ss-t">Integration & Monitoring</div>
+      <div class="res-list">
+        <div class="res-item" draggable="true" data-type="logicapp"><div class="ri-icon">🔄</div><div><div class="ri-name">Logic App</div><div class="ri-cost">pay-per-action</div></div></div>
+        <div class="res-item" draggable="true" data-type="monitor"><div class="ri-icon">📊</div><div><div class="ri-name">Azure Monitor</div><div class="ri-cost">from $2.30/GB</div></div></div>
+        <div class="res-item" draggable="true" data-type="apim"><div class="ri-icon">🔌</div><div><div class="ri-name">API Management</div><div class="ri-cost">from $48/mo</div></div></div>
+      </div>
+    </div>
+    <div class="ss">
+      <div class="ss-t">Estimated Monthly Cost</div>
+      <div class="cost-box">
+        <div class="cost-total" id="totalCost">$0</div>
+        <div class="cost-label">per month</div>
+        <div class="cost-breakdown" id="costBreakdown"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CANVAS -->
+  <div class="canvas-area" id="canvasArea">
+    <canvas id="cloudCanvas"></canvas>
+    <div id="resContainer"></div>
+    <div class="zoom-c">
+      <button class="zb" onclick="zIn()">+</button>
+      <div class="zl" id="zoomLbl">100%</div>
+      <button class="zb" onclick="zOut()">−</button>
+      <button class="zb" onclick="zReset()" style="font-size:0.55rem">⊡</button>
+    </div>
+  </div>
+
+  <!-- PROPS -->
+  <div class="props">
+    <div class="ps">
+      <div class="ps-t">Resource Config</div>
+      <div id="propsContent"><div class="p-empty">Select a resource to configure</div></div>
+    </div>
+    <div class="ps">
+      <div class="ps-t">Architecture Stats</div>
+      <div class="stat-grid">
+        <div class="stat-c"><div class="stat-v" style="color:var(--az)" id="sRes">0</div><div class="stat-l">Resources</div></div>
+        <div class="stat-c"><div class="stat-v" style="color:var(--teal)" id="sConn">0</div><div class="stat-l">Connections</div></div>
+        <div class="stat-c"><div class="stat-v" style="color:var(--green)" id="sCost">$0</div><div class="stat-l">Monthly</div></div>
+        <div class="stat-c"><div class="stat-v" style="color:var(--yellow)" id="sYear">$0</div><div class="stat-l">Yearly</div></div>
+      </div>
+    </div>
+    <div class="ps">
+      <div class="ps-t">Connections</div>
+      <div id="connList" style="font-size:0.6rem;color:var(--t3)">No connections</div>
+    </div>
+  </div>
+
+  <div class="bot">
+    <div class="bot-item">CLOUDCRAFT v1.0</div>
+    <div class="bot-item">Prices are Azure estimates — verify at azure.microsoft.com/pricing</div>
+    <div class="bot-item" style="margin-left:auto">nexusfang-tech</div>
+  </div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal-bg" id="exportModal">
+  <div class="modal">
+    <div class="modal-h"><h3>EXPORT ARCHITECTURE</h3><button class="modal-x" onclick="closeExport()">✕</button></div>
+    <div class="modal-b">
+      <div class="ex-tabs">
+        <button class="ex-tab on" onclick="genExp('terraform',this)">Terraform HCL</button>
+        <button class="ex-tab" onclick="genExp('arm',this)">ARM Template</button>
+        <button class="ex-tab" onclick="genExp('mermaid',this)">Mermaid</button>
+        <button class="ex-tab" onclick="genExp('cost',this)">Cost Report</button>
+      </div>
+      <pre id="exportContent"></pre>
+      <div style="margin-top:0.6rem;display:flex;gap:0.35rem">
+        <button class="tb pri" onclick="copyExp()">Copy</button>
+        <button class="tb" onclick="dlExp()">Download</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let resources=[],conns=[],sel=null,nid=1,zoom=1,panX=0,panY=0;
+let isPan=false,psx=0,psy=0,isDrag=false,dragRes=null,dox=0,doy=0;
+let isConn=false,connFrom=null,cmx=0,cmy=0;
+let curExp='terraform';
+
+const CA=document.getElementById('canvasArea'),CV=document.getElementById('cloudCanvas'),CX=CV.getContext('2d'),RC=document.getElementById('resContainer');
+
+const RES_DEF={
+  vm:{icon:'🖥️',name:'Virtual Machine',cat:'Compute',cost:38,sku:'B2s',config:{size:'B2s',os:'Ubuntu 24.04',disk:'30 GB SSD',region:'East US'}},
+  appservice:{icon:'🌐',name:'App Service',cat:'Compute',cost:13,sku:'B1',config:{plan:'B1',runtime:'Python 3.12',os:'Linux',region:'East US'}},
+  function:{icon:'⚡',name:'Functions',cat:'Compute',cost:0,sku:'Consumption',config:{plan:'Consumption',runtime:'Python 3.12',region:'East US'}},
+  container:{icon:'🐳',name:'Container Instance',cat:'Compute',cost:30,sku:'1 vCPU, 1.5GB',config:{cpu:'1',memory:'1.5 GB',image:'nginx:latest',region:'East US'}},
+  aks:{icon:'☸️',name:'AKS Cluster',cat:'Compute',cost:73,sku:'Standard',config:{nodeSize:'D2s_v3',nodeCount:'2',region:'East US'}},
+  vnet:{icon:'🔲',name:'Virtual Network',cat:'Network',cost:0,sku:'—',config:{cidr:'10.0.0.0/16',subnets:'default: 10.0.1.0/24',region:'East US'}},
+  lb:{icon:'⚖️',name:'Load Balancer',cat:'Network',cost:18,sku:'Standard',config:{type:'Public',sku:'Standard',region:'East US'}},
+  appgw:{icon:'🛡️',name:'App Gateway',cat:'Network',cost:175,sku:'WAF_v2',config:{tier:'WAF_v2',capacity:'2',region:'East US'}},
+  dns:{icon:'🌍',name:'DNS Zone',cat:'Network',cost:0.50,sku:'Public',config:{zone:'example.com',type:'Public'}},
+  vpngw:{icon:'🔒',name:'VPN Gateway',cat:'Network',cost:27,sku:'Basic',config:{type:'Route-based',sku:'Basic',region:'East US'}},
+  nsg:{icon:'🚧',name:'NSG',cat:'Network',cost:0,sku:'—',config:{rules:'Allow SSH (22), HTTPS (443)'}},
+  storage:{icon:'💾',name:'Storage Account',cat:'Storage',cost:1,sku:'LRS',config:{kind:'StorageV2',replication:'LRS',tier:'Hot',region:'East US'}},
+  sqldb:{icon:'🗄️',name:'Azure SQL',cat:'Database',cost:5,sku:'Basic',config:{tier:'Basic',dtu:'5',maxSize:'2 GB',region:'East US'}},
+  cosmos:{icon:'🌌',name:'Cosmos DB',cat:'Database',cost:24,sku:'Serverless',config:{api:'SQL',consistency:'Session',region:'East US'}},
+  redis:{icon:'🔴',name:'Redis Cache',cat:'Database',cost:16,sku:'Basic C0',config:{sku:'Basic',size:'C0 (250MB)',region:'East US'}},
+  entraid:{icon:'🔑',name:'Entra ID',cat:'Identity',cost:0,sku:'Free',config:{tier:'Free',mfa:'Enabled',sso:'Enabled'}},
+  keyvault:{icon:'🔐',name:'Key Vault',cat:'Security',cost:0,sku:'Standard',config:{sku:'Standard',softDelete:'Enabled',purgeProtection:'Enabled'}},
+  sentinel:{icon:'👁️',name:'Sentinel',cat:'Security',cost:100,sku:'Pay-as-you-go',config:{retention:'90 days',dataConnectors:'Entra ID, M365',region:'East US'}},
+  logicapp:{icon:'🔄',name:'Logic App',cat:'Integration',cost:0,sku:'Consumption',config:{plan:'Consumption',trigger:'HTTP'}},
+  monitor:{icon:'📊',name:'Azure Monitor',cat:'Monitoring',cost:10,sku:'Pay-as-you-go',config:{logs:'Enabled',metrics:'Enabled',alerts:'Configured'}},
+  apim:{icon:'🔌',name:'API Management',cat:'Integration',cost:48,sku:'Developer',config:{tier:'Developer',region:'East US'}},
+};
+
+function resize(){const r=CA.getBoundingClientRect();CV.width=r.width*2;CV.height=r.height*2;CV.style.width=r.width+'px';CV.style.height=r.height+'px';CX.setTransform(2,0,0,2,0,0);draw()}
+addEventListener('resize',resize);setTimeout(resize,50);
+
+function draw(){
+  const r=CA.getBoundingClientRect();CX.clearRect(0,0,r.width,r.height);
+  CX.save();CX.translate(panX,panY);CX.scale(zoom,zoom);
+  // Blueprint grid
+  const gs=30,sx=Math.floor(-panX/zoom/gs)*gs-gs,sy=Math.floor(-panY/zoom/gs)*gs-gs;
+  CX.fillStyle='rgba(0,120,212,0.02)';
+  for(let x=sx;x<sx+r.width/zoom+gs*2;x+=gs)for(let y=sy;y<sy+r.height/zoom+gs*2;y+=gs)CX.fillRect(x,y,1,1);
+  // Larger grid
+  CX.strokeStyle='rgba(0,120,212,0.04)';CX.lineWidth=0.5;
+  for(let x=sx;x<sx+r.width/zoom+gs*6;x+=gs*5){CX.beginPath();CX.moveTo(x,sy);CX.lineTo(x,sy+r.height/zoom+gs*2);CX.stroke()}
+  for(let y=sy;y<sy+r.height/zoom+gs*6;y+=gs*5){CX.beginPath();CX.moveTo(sx,y);CX.lineTo(sx+r.width/zoom+gs*2,y);CX.stroke()}
+  
+  // Connections
+  conns.forEach(c=>{
+    const a=resources.find(r=>r.id===c.from),b=resources.find(r=>r.id===c.to);
+    if(!a||!b)return;
+    const ax=a.x+70,ay=a.y+35,bx=b.x+70,by=b.y+35;
+    CX.beginPath();CX.moveTo(ax,ay);
+    const cpx=Math.abs(bx-ax)*0.4;
+    CX.bezierCurveTo(ax+cpx,ay,bx-cpx,by,bx,by);
+    CX.strokeStyle='rgba(0,120,212,0.35)';CX.lineWidth=1.5;CX.stroke();
+    // Arrow
+    CX.beginPath();CX.moveTo(bx,by);CX.lineTo(bx-7,by-3);CX.lineTo(bx-7,by+3);CX.closePath();
+    CX.fillStyle='rgba(0,120,212,0.35)';CX.fill();
+  });
+  // Active conn
+  if(isConn&&connFrom){
+    CX.beginPath();CX.moveTo(connFrom.x+70,connFrom.y+35);CX.lineTo((cmx-panX)/zoom,(cmy-panY)/zoom);
+    CX.strokeStyle='rgba(0,120,212,0.3)';CX.lineWidth=1.5;CX.setLineDash([5,3]);CX.stroke();CX.setLineDash([]);
+  }
+  CX.restore();
+}
+
+function addResource(type,x,y){
+  const def=RES_DEF[type];if(!def)return;
+  const res={id:nid++,type,name:def.name,icon:def.icon,cat:def.cat,cost:def.cost,sku:def.sku,config:{...def.config},x:x||150+Math.random()*200,y:y||100+Math.random()*200,notes:''};
+  resources.push(res);renderRes(res);updateAll();return res;
+}
+
+function renderRes(res){
+  let el=document.getElementById(`res-${res.id}`);if(el)el.remove();
+  el=document.createElement('div');el.className=`cloud-res ${sel===res.id?'selected':''}`;el.id=`res-${res.id}`;
+  el.style.left=(res.x*zoom+panX)+'px';el.style.top=(res.y*zoom+panY)+'px';
+  el.style.transform=`scale(${zoom})`;el.style.transformOrigin='top left';
+  const summary=Object.entries(res.config).slice(0,2).map(([k,v])=>`${k}: ${v}`).join(' · ');
+  el.innerHTML=`
+    <div class="cr-head"><div class="cr-icon">${res.icon}</div><div class="cr-name">${res.name}</div><button class="cr-del" onclick="event.stopPropagation();delRes(${res.id})">✕</button></div>
+    <div class="cr-body">${res.sku} · ${summary.slice(0,40)}</div>
+    <div class="cr-cost">~$${res.cost}/mo</div>
+    <div class="cr-port p-t" data-id="${res.id}"></div>
+    <div class="cr-port p-b" data-id="${res.id}"></div>
+    <div class="cr-port p-l" data-id="${res.id}"></div>
+    <div class="cr-port p-r" data-id="${res.id}"></div>
+  `;
+  el.addEventListener('mousedown',e=>{if(e.target.classList.contains('cr-port')||e.target.classList.contains('cr-del'))return;e.stopPropagation();selectRes(res.id);isDrag=true;dragRes=res;const rc=CA.getBoundingClientRect();dox=e.clientX-rc.left-res.x*zoom-panX;doy=e.clientY-rc.top-res.y*zoom-panY});
+  el.querySelectorAll('.cr-port').forEach(p=>{
+    p.addEventListener('mousedown',e=>{e.stopPropagation();isConn=true;connFrom=res});
+    p.addEventListener('mouseup',e=>{e.stopPropagation();if(isConn&&connFrom&&connFrom.id!==res.id){const exists=conns.some(c=>(c.from===connFrom.id&&c.to===res.id)||(c.from===res.id&&c.to===connFrom.id));if(!exists){conns.push({from:connFrom.id,to:res.id});updateAll()}}isConn=false;connFrom=null;draw()});
+  });
+  RC.appendChild(el);
+}
+
+function renderAll(){RC.innerHTML='';resources.forEach(r=>renderRes(r));draw()}
+
+function selectRes(id){sel=id;document.querySelectorAll('.cloud-res').forEach(e=>e.classList.remove('selected'));document.getElementById(`res-${id}`)?.classList.add('selected');showProps(id)}
+function delRes(id){resources=resources.filter(r=>r.id!==id);conns=conns.filter(c=>c.from!==id&&c.to!==id);document.getElementById(`res-${id}`)?.remove();if(sel===id){sel=null;showProps(null)}updateAll();draw()}
+
+function showProps(id){
+  const el=document.getElementById('propsContent');
+  if(!id){el.innerHTML='<div class="p-empty">Select a resource to configure</div>';return}
+  const res=resources.find(r=>r.id===id);if(!res)return;
+  let fields='';
+  // SKU/pricing selector based on type
+  const skuOpts=getSkuOptions(res.type);
+  if(skuOpts.length){
+    fields+=`<div class="pf"><label>SKU / Tier</label><select onchange="updSku(${id},this.value)">${skuOpts.map(s=>`<option value="${s.sku}" ${res.sku===s.sku?'selected':''}>${s.sku} (~$${s.cost}/mo)</option>`).join('')}</select></div>`;
+  }
+  Object.entries(res.config).forEach(([k,v])=>{
+    if(k==='region'){
+      fields+=`<div class="pf"><label>${k}</label><select onchange="updCfg(${id},'${k}',this.value)">${['East US','East US 2','West US','West US 2','Central US','North Europe','West Europe','Southeast Asia','Japan East','Australia East'].map(r=>`<option value="${r}" ${v===r?'selected':''}>${r}</option>`).join('')}</select></div>`;
+    } else {
+      fields+=`<div class="pf"><label>${k}</label><input value="${v}" onchange="updCfg(${id},'${k}',this.value)"></div>`;
+    }
+  });
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.6rem">
+      <span style="font-size:1.2rem">${res.icon}</span>
+      <div><div style="font-weight:700;font-size:0.8rem">${res.name}</div><div style="font-size:0.55rem;color:var(--t3)">${res.cat} · ID: ${res.id}</div></div>
+    </div>
+    <div class="pf"><label>Display Name</label><input value="${res.name}" onchange="updName(${id},this.value)"></div>
+    ${fields}
+    <div class="pf"><label>Notes</label><textarea onchange="updNote(${id},this.value)">${res.notes||''}</textarea></div>
+    <div style="padding:0.4rem;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);border-radius:4px;margin-top:0.4rem;text-align:center">
+      <div style="font-family:var(--fd);font-size:1rem;font-weight:700;color:var(--green)">$${res.cost}/mo</div>
+      <div style="font-size:0.5rem;color:var(--t3)">≈ $${(res.cost*12).toLocaleString()}/year</div>
+    </div>
+    <button class="tb red" style="width:100%;margin-top:0.5rem" onclick="delRes(${id})">Delete Resource</button>
+  `;
+}
+
+function getSkuOptions(type){
+  const opts={
+    vm:[{sku:'B1s',cost:7},{sku:'B2s',cost:38},{sku:'B2ms',cost:75},{sku:'D2s_v3',cost:96},{sku:'D4s_v3',cost:192},{sku:'E2s_v3',cost:128}],
+    appservice:[{sku:'F1 (Free)',cost:0},{sku:'B1',cost:13},{sku:'B2',cost:26},{sku:'S1',cost:73},{sku:'P1v3',cost:138}],
+    sqldb:[{sku:'Basic',cost:5},{sku:'S0',cost:15},{sku:'S1',cost:30},{sku:'S2',cost:75},{sku:'P1',cost:465}],
+    redis:[{sku:'Basic C0',cost:16},{sku:'Basic C1',cost:32},{sku:'Standard C0',cost:41},{sku:'Standard C1',cost:82}],
+    lb:[{sku:'Basic',cost:0},{sku:'Standard',cost:18}],
+    vpngw:[{sku:'Basic',cost:27},{sku:'VpnGw1',cost:140},{sku:'VpnGw2',cost:360}],
+    sentinel:[{sku:'Pay-as-you-go',cost:100},{sku:'Commitment 100GB',cost:196}],
+    apim:[{sku:'Consumption',cost:3},{sku:'Developer',cost:48},{sku:'Basic',cost:150},{sku:'Standard',cost:677}],
+  };
+  return opts[type]||[];
+}
+
+function updSku(id,sku){
+  const res=resources.find(r=>r.id===id);if(!res)return;
+  res.sku=sku;
+  const opts=getSkuOptions(res.type);const match=opts.find(o=>o.sku===sku);
+  if(match)res.cost=match.cost;
+  renderRes(res);selectRes(id);updateAll();
+}
+function updCfg(id,k,v){const res=resources.find(r=>r.id===id);if(res){res.config[k]=v;renderRes(res);selectRes(id)}}
+function updName(id,v){const res=resources.find(r=>r.id===id);if(res){res.name=v;renderRes(res);selectRes(id)}}
+function updNote(id,v){const res=resources.find(r=>r.id===id);if(res)res.notes=v}
+
+function updateAll(){
+  const total=resources.reduce((a,r)=>a+r.cost,0);
+  document.getElementById('resCount').textContent=`Resources: ${resources.length}`;
+  document.getElementById('connCount').textContent=`Connections: ${conns.length}`;
+  document.getElementById('costDisplay').textContent=`$${total}/mo`;
+  document.getElementById('totalCost').textContent=`$${total}`;
+  document.getElementById('sRes').textContent=resources.length;
+  document.getElementById('sConn').textContent=conns.length;
+  document.getElementById('sCost').textContent=`$${total}`;
+  document.getElementById('sYear').textContent=`$${(total*12).toLocaleString()}`;
+  // Breakdown
+  const cats={};resources.forEach(r=>{if(!cats[r.cat])cats[r.cat]=0;cats[r.cat]+=r.cost});
+  document.getElementById('costBreakdown').innerHTML=Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="cb-row"><span class="cb-name">${k}</span><span class="cb-val">$${v}/mo</span></div>`).join('');
+  // Conn list
+  const cl=document.getElementById('connList');
+  if(!conns.length){cl.innerHTML='<div style="color:var(--t3)">No connections</div>';return}
+  cl.innerHTML=conns.map(c=>{
+    const a=resources.find(r=>r.id===c.from),b=resources.find(r=>r.id===c.to);
+    return `<div style="display:flex;align-items:center;gap:0.3rem;padding:0.2rem 0;border-bottom:1px solid rgba(0,120,212,0.05);font-size:0.58rem">
+      <span style="flex:1">${a?.name||'?'} → ${b?.name||'?'}</span>
+      <button style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:0.5rem" onclick="delConn(${c.from},${c.to})">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function delConn(f,t){conns=conns.filter(c=>!(c.from===f&&c.to===t));updateAll();draw()}
+
+// DRAG
+document.querySelectorAll('.res-item').forEach(i=>{i.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',i.dataset.type)})});
+CA.addEventListener('dragover',e=>{e.preventDefault()});
+CA.addEventListener('drop',e=>{e.preventDefault();const type=e.dataTransfer.getData('text/plain');if(!RES_DEF[type])return;const rc=CA.getBoundingClientRect();const x=(e.clientX-rc.left-panX)/zoom,y=(e.clientY-rc.top-panY)/zoom;const res=addResource(type,x,y);if(res)selectRes(res.id)});
+
+// PAN/DRAG/CONN
+CA.addEventListener('mousedown',e=>{if(e.target===CA||e.target===CV){isPan=true;psx=e.clientX-panX;psy=e.clientY-panY;CA.classList.add('grabbing');if(sel){sel=null;showProps(null);document.querySelectorAll('.cloud-res').forEach(el=>el.classList.remove('selected'))}}});
+addEventListener('mousemove',e=>{
+  if(isPan){panX=e.clientX-psx;panY=e.clientY-psy;renderAll()}
+  if(isDrag&&dragRes){const rc=CA.getBoundingClientRect();dragRes.x=(e.clientX-rc.left-dox-panX)/zoom;dragRes.y=(e.clientY-rc.top-doy-panY)/zoom;const el=document.getElementById(`res-${dragRes.id}`);if(el){el.style.left=(dragRes.x*zoom+panX)+'px';el.style.top=(dragRes.y*zoom+panY)+'px'}draw()}
+  if(isConn){const rc=CA.getBoundingClientRect();cmx=e.clientX-rc.left;cmy=e.clientY-rc.top;draw()}
+});
+addEventListener('mouseup',()=>{if(isPan){isPan=false;CA.classList.remove('grabbing')}if(isDrag){isDrag=false;dragRes=null}if(isConn){isConn=false;connFrom=null;draw()}});
+CA.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(0.3,Math.min(2.5,zoom+(e.deltaY>0?-0.05:0.05)));renderAll();document.getElementById('zoomLbl').textContent=Math.round(zoom*100)+'%'},{passive:false});
+function zIn(){zoom=Math.min(2.5,zoom+0.1);renderAll();document.getElementById('zoomLbl').textContent=Math.round(zoom*100)+'%'}
+function zOut(){zoom=Math.max(0.3,zoom-0.1);renderAll();document.getElementById('zoomLbl').textContent=Math.round(zoom*100)+'%'}
+function zReset(){zoom=1;panX=0;panY=0;renderAll();document.getElementById('zoomLbl').textContent='100%'}
+
+function autoLayout(){
+  if(!resources.length)return;
+  const cats={};resources.forEach(r=>{if(!cats[r.cat])cats[r.cat]=[];cats[r.cat].push(r)});
+  let col=0;const gx=200,gy=100;
+  Object.values(cats).forEach(group=>{group.forEach((r,i)=>{r.x=80+col*gx;r.y=60+i*gy});col++});
+  renderAll();
+}
+
+function clearAll(){if(!resources.length)return;if(!confirm('Clear all?'))return;resources=[];conns=[];sel=null;RC.innerHTML='';showProps(null);updateAll();draw()}
+function saveArch(){localStorage.setItem('cloudcraft_save',JSON.stringify({resources,conns,nid}));alert('Saved!')}
+function loadArch(){const d=localStorage.getItem('cloudcraft_save');if(!d){alert('No save');return}const s=JSON.parse(d);resources=s.resources;conns=s.conns;nid=s.nid||resources.length+1;sel=null;showProps(null);renderAll();updateAll()}
+
+function loadDemo(){
+  resources=[];conns=[];RC.innerHTML='';
+  const dns=addResource('dns',80,40);dns.name='DNS Zone';dns.config.zone='connect.ncacc.org';
+  const appgw=addResource('appgw',80,160);appgw.name='App Gateway + WAF';
+  const vnet=addResource('vnet',320,40);vnet.name='NCACC-VNet';vnet.config.cidr='10.0.0.0/16';
+  const nsg=addResource('nsg',320,160);nsg.name='Web-NSG';nsg.config.rules='Allow HTTPS (443), SSH (22)';
+  const vm=addResource('vm',560,80);vm.name='NCACC-WEB-01';vm.config.size='B2s';vm.config.os='Windows Server 2022';vm.cost=38;
+  const sql=addResource('sqldb',560,220);sql.name='Portal-DB';sql.config.tier='Basic';
+  const kv=addResource('keyvault',800,80);kv.name='NCACC-KeyVault';
+  const eid=addResource('entraid',800,220);eid.name='Entra ID (SSO)';
+  const st=addResource('storage',560,360);st.name='Portal-Storage';
+  const mon=addResource('monitor',320,360);mon.name='Azure Monitor';
+  const sent=addResource('sentinel',80,360);sent.name='Sentinel SIEM';
+
+  conns.push({from:dns.id,to:appgw.id},{from:appgw.id,to:nsg.id},{from:nsg.id,to:vm.id},{from:vm.id,to:sql.id},{from:vm.id,to:kv.id},{from:vm.id,to:eid.id},{from:vm.id,to:st.id},{from:mon.id,to:vm.id},{from:mon.id,to:sent.id},{from:vnet.id,to:nsg.id});
+
+  renderAll();updateAll();
+}
+
+// EXPORT
+function openExport(){document.getElementById('exportModal').classList.add('open');genExp('terraform',document.querySelector('.ex-tab.on'))}
+function closeExport(){document.getElementById('exportModal').classList.remove('open')}
+function genExp(type,btn){
+  curExp=type;document.querySelectorAll('.ex-tab').forEach(t=>t.classList.remove('on'));btn.classList.add('on');
+  const el=document.getElementById('exportContent');
+  if(type==='terraform'){
+    let tf=`# CLOUDCRAFT — Terraform Export\n# Generated: ${new Date().toISOString()}\n# Provider: Azure (azurerm)\n\nterraform {\n  required_providers {\n    azurerm = {\n      source  = "hashicorp/azurerm"\n      version = "~> 3.0"\n    }\n  }\n}\n\nprovider "azurerm" {\n  features {}\n}\n\nresource "azurerm_resource_group" "main" {\n  name     = "rg-cloudcraft"\n  location = "${resources[0]?.config?.region||'East US'}"\n}\n\n`;
+    const tfMap={
+      vm:(r,n)=>`resource "azurerm_linux_virtual_machine" "${n}" {\n  name                = "${r.name.toLowerCase().replace(/[^a-z0-9-]/g,'-')}"\n  resource_group_name = azurerm_resource_group.main.name\n  location            = azurerm_resource_group.main.location\n  size                = "Standard_${r.config.size||'B2s'}"\n  admin_username      = "adminuser"\n\n  os_disk {\n    caching              = "ReadWrite"\n    storage_account_type = "Standard_LRS"\n    disk_size_gb         = ${parseInt(r.config.disk)||30}\n  }\n\n  source_image_reference {\n    publisher = "Canonical"\n    offer     = "0001-com-ubuntu-server-jammy"\n    sku       = "24_04-lts"\n    version   = "latest"\n  }\n  # SKU: ${r.sku} (~$${r.cost}/mo)\n}\n\n`,
+      appservice:(r,n)=>`resource "azurerm_service_plan" "${n}_plan" {\n  name                = "${n}-plan"\n  resource_group_name = azurerm_resource_group.main.name\n  location            = azurerm_resource_group.main.location\n  os_type             = "${r.config.os||'Linux'}"\n  sku_name            = "${r.config.plan||'B1'}"\n}\n\nresource "azurerm_linux_web_app" "${n}" {\n  name                = "${r.name.toLowerCase().replace(/[^a-z0-9-]/g,'-')}"\n  resource_group_name = azurerm_resource_group.main.name\n  location            = azurerm_resource_group.main.location\n  service_plan_id     = azurerm_service_plan.${n}_plan.id\n  # SKU: ${r.sku} (~$${r.cost}/mo)\n\n  site_config {}\n}\n\n`,
+      vnet:(r,n)=>`resource "azurerm_virtual_network" "${n}" {\n  name                = "${r.name.toLowerCase().replace(/[^a-z0-9-]/g,'-')}"\n  resource_group_name = azurerm_resource_group.main.name\n  location            = azurerm_resource_group.main.location\n  address_space       = ["${r.config.cidr||'10.0.0.0/16'}"]\n}\n\n`,
+      nsg:(r,n)=>`resource "azurerm_network_security_group" "${n}" {\n  name                = "${n}"\n  resource_group_name = azurerm_resource_group.main.name\n  location            = azurerm_resource_group.main.location\n  # Rules: ${r.config.rules||'default'}\n}\n\n`,
+      sqldb:(r,n)=>`resource "azurerm_mssql_server" "${n}_server" {\n  name                         = "${n}-server"\n  resource_group_name          = azurerm_resource_group.main.name\n  location                     = azurerm_resource_group.main.location\n  version                      = "12.0"\n  administrator_login          = "sqladmin"\n  administrator_login_password = var.sql_password\n}\n\nresource "azurerm_mssql_database" "${n}" {\n  name      = "${n}"\n  server_id = azurerm_mssql_server.${n}_server.id\n  sku_name  = "${r.config.tier||'Basic'}"\n  # SKU: ${r.sku} (~$${r.cost}/mo)\n}\n\n`,
+      storage:(r,n)=>`resource "azurerm_storage_account" "${n}" {\n  name                     = "${n.replace(/[^a-z0-9]/g,'').slice(0,24)}"\n  resource_group_name      = azurerm_resource_group.main.name\n  location                 = azurerm_resource_group.main.location\n  account_tier             = "Standard"\n  account_replication_type = "${r.config.replication||'LRS'}"\n  # SKU: ${r.sku} (~$${r.cost}/mo)\n}\n\n`,
+      keyvault:(r,n)=>`resource "azurerm_key_vault" "${n}" {\n  name                = "${n}"\n  resource_group_name = azurerm_resource_group.main.name\n  location            = azurerm_resource_group.main.location\n  sku_name            = "standard"\n  tenant_id           = data.azurerm_client_config.current.tenant_id\n  soft_delete_retention_days = 7\n  purge_protection_enabled  = ${r.config.purgeProtection==='Enabled'?'true':'false'}\n}\n\n`,
+    };
+    resources.forEach(r=>{
+      const n=r.name.toLowerCase().replace(/[^a-z0-9]/g,'_').replace(/_+/g,'_');
+      if(tfMap[r.type])tf+=tfMap[r.type](r,n);
+      else tf+=`# ${r.name} (${r.type}) — ${r.sku} (~$${r.cost}/mo)\n# Manual configuration required\n\n`;
+    });
+    tf+=`# Total estimated cost: ~$${resources.reduce((a,r)=>a+r.cost,0)}/month`;
+    el.textContent=tf;
+  } else if(type==='arm'){
+    const arm={$schema:'https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#',contentVersion:'1.0.0.0',metadata:{_generator:'CLOUDCRAFT',generatedDate:new Date().toISOString()},resources:resources.map(r=>({type:`Microsoft.${r.cat==='Compute'?'Compute':'Resources'}/${r.type}`,apiVersion:'2023-01-01',name:r.name.replace(/\s/g,'-'),location:`[resourceGroup().location]`,properties:{...r.config},tags:{generatedBy:'CLOUDCRAFT',sku:r.sku,estimatedCost:`$${r.cost}/mo`}}))};
+    el.textContent=JSON.stringify(arm,null,2);
+  } else if(type==='mermaid'){
+    let m='graph TD\n';
+    resources.forEach(r=>{const shape=r.cat==='Network'?`{{"${r.name}"}}`:`["${r.name}<br/><small>${r.sku} · $${r.cost}/mo</small>"]`;m+=`    R${r.id}${shape}\n`});
+    conns.forEach(c=>m+=`    R${c.from} --> R${c.to}\n`);
+    const catColors={Compute:'#0078d4',Network:'#06b6d4',Storage:'#10b981',Database:'#f59e0b',Identity:'#8b5cf6',Security:'#ef4444',Integration:'#ec4899',Monitoring:'#6366f1'};
+    resources.forEach(r=>m+=`    style R${r.id} fill:${catColors[r.cat]||'#0078d4'}22,stroke:${catColors[r.cat]||'#0078d4'},color:#fff\n`);
+    el.textContent=m;
+  } else if(type==='cost'){
+    const total=resources.reduce((a,r)=>a+r.cost,0);
+    let rpt=`CLOUDCRAFT COST REPORT\n${'='.repeat(50)}\nGenerated: ${new Date().toISOString().split('T')[0]}\n\n`;
+    rpt+=`SUMMARY\n${'-'.repeat(30)}\nMonthly Estimate:  $${total}\nAnnual Estimate:   $${(total*12).toLocaleString()}\nTotal Resources:   ${resources.length}\n\n`;
+    rpt+=`RESOURCE BREAKDOWN\n${'-'.repeat(50)}\n${'Resource'.padEnd(25)}${'SKU'.padEnd(15)}${'Monthly'.padStart(10)}\n${'-'.repeat(50)}\n`;
+    resources.sort((a,b)=>b.cost-a.cost).forEach(r=>{rpt+=`${r.name.padEnd(25)}${r.sku.padEnd(15)}${'$'+r.cost.toFixed(0).padStart(9)}\n`});
+    rpt+=`${'-'.repeat(50)}\n${'TOTAL'.padEnd(40)}${'$'+total.toFixed(0).padStart(10)}\n\n`;
+    const cats={};resources.forEach(r=>{if(!cats[r.cat])cats[r.cat]=0;cats[r.cat]+=r.cost});
+    rpt+=`BY CATEGORY\n${'-'.repeat(30)}\n`;
+    Object.entries(cats).sort((a,b)=>b[1]-a[1]).forEach(([k,v])=>{rpt+=`${k.padEnd(20)}${'$'+v.toFixed(0).padStart(10)} (${Math.round(v/total*100)}%)\n`});
+    rpt+=`\n* Prices are Azure estimates. Actual costs may vary.\n* Verify at https://azure.microsoft.com/pricing`;
+    el.textContent=rpt;
+  }
+}
+function copyExp(){navigator.clipboard?.writeText(document.getElementById('exportContent').textContent).then(()=>alert('Copied!'))}
+function dlExp(){const t=document.getElementById('exportContent').textContent;const ext={terraform:'tf',arm:'json',mermaid:'mmd',cost:'txt'}[curExp];const b=new Blob([t],{type:'text/plain'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`cloudcraft-architecture.${ext}`;a.click()}
+
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT')return;if((e.key==='Delete'||e.key==='Backspace')&&sel)delRes(sel);if(e.key==='Escape')closeExport()});
+
+resize();
+</script>
+</body>
+</html>
